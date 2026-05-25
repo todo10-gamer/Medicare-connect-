@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Logging out... | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- Full screen centered logout message -->
+  <div style="min-height:100vh; display:flex; align-items:center;
+              justify-content:center; background:linear-gradient(135deg,#e0f4ff,#f0f4f8);">
+    <div style="text-align:center; background:white; padding:60px 48px;
+                border-radius:20px; box-shadow:0 8px 40px rgba(0,119,182,0.12);
+                max-width:400px; width:90%;">
+
+      <!-- Animated icon -->
+      <div style="width:80px; height:80px; border-radius:50%; background:#fff0f0;
+                  display:flex; align-items:center; justify-content:center;
+                  margin:0 auto 24px;">
+        <i class="fas fa-sign-out-alt" style="font-size:36px; color:var(--danger);"></i>
+      </div>
+
+      <h2 style="color:var(--dark); margin-bottom:10px;">Logging you out...</h2>
+      <p style="color:var(--gray); margin-bottom:24px;">
+        You have been logged out successfully.<br/>
+        Redirecting to the homepage...
+      </p>
+
+      <!-- Loading spinner -->
+      <i class="fas fa-spinner fa-spin" style="font-size:24px; color:var(--primary);"></i>
+
+      <div style="margin-top:24px;">
+        <a href="../index.html" style="color:var(--primary); font-size:14px;">
+          Click here if not redirected automatically
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/auth.js"></script>
+  <script>
+    // Clear all auth data from localStorage
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    // Redirect to homepage after 2 seconds
+    setTimeout(() => {
+      window.location.href = "../index.html";
+    }, 2000);
+  </script>
+
+</body>
+</html>

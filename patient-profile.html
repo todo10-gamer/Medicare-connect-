@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Profile | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><i class="fas fa-heartbeat"></i> MediCare</div>
+      <nav class="sidebar-menu">
+        <a href="patient-dashboard.html"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="book-appointment.html"><i class="fas fa-calendar-plus"></i> Book Appointment</a>
+        <a href="my-appointments.html"><i class="fas fa-calendar-check"></i> My Appointments</a>
+        <a href="doctors.html"><i class="fas fa-user-md"></i> Find Doctors</a>
+        <a href="patient-profile.html" class="active"><i class="fas fa-user"></i> My Profile</a>
+        <a href="logout.html"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </nav>
+    </aside>
+
+    <main class="dashboard-main">
+      <div class="dashboard-header"><h1>My Profile</h1></div>
+
+      <div style="display:grid; grid-template-columns:300px 1fr; gap:28px; align-items:start;">
+
+        <!-- Left: Profile card -->
+        <div class="table-card" style="text-align:center;">
+          <div id="avatarCircle"
+            style="width:100px; height:100px; border-radius:50%; margin:0 auto 16px;
+                   background:linear-gradient(135deg,var(--primary),var(--secondary));
+                   display:flex; align-items:center; justify-content:center;
+                   color:white; font-size:40px; font-weight:700;">?</div>
+          <h2 id="profileName" style="margin-bottom:6px;">Loading...</h2>
+          <p id="profileEmail" style="color:var(--gray); font-size:14px; margin-bottom:6px;"></p>
+          <p id="profilePhone" style="color:var(--gray); font-size:14px; margin-bottom:16px;"></p>
+          <span class="badge badge-confirmed" style="font-size:13px; padding:6px 16px;">
+            <i class="fas fa-user"></i> Patient
+          </span>
+          <div style="margin-top:24px; border-top:1px solid var(--border); padding-top:20px;">
+            <p style="font-size:13px; color:var(--gray);">
+              Member since<br/><strong id="memberSince">—</strong>
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: Edit form -->
+        <div class="table-card">
+          <h3 style="margin-bottom:24px;">Edit Profile Information</h3>
+          <div id="alertBox" class="alert" style="display:none;"></div>
+
+          <form id="profileForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="editName" placeholder="Your full name" required/>
+              </div>
+              <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" id="editPhone" placeholder="+91 98765 43210"/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email Address</label>
+              <!-- Email is read-only -->
+              <input type="email" id="editEmail" readonly
+                style="background:#f5f5f5; cursor:not-allowed; color:var(--gray);"/>
+              <small style="color:var(--gray); font-size:12px;">Email cannot be changed.</small>
+            </div>
+            <button type="submit" class="btn btn-primary" id="saveBtn">
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+          </form>
+
+          <!-- Change Password -->
+          <div style="margin-top:36px; border-top:1px solid var(--border); padding-top:28px;">
+            <h3 style="margin-bottom:20px;">Change Password</h3>
+            <div id="pwAlertBox" class="alert" style="display:none;"></div>
+            <form id="passwordForm">
+              <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="newPassword" placeholder="Minimum 6 characters" minlength="6"/>
+              </div>
+              <div class="form-group">
+                <label>Confirm New Password</label>
+                <input type="password" id="confirmNewPassword" placeholder="Re-enter new password"/>
+              </div>
+              <button type="submit" class="btn btn-outline" id="changePasswordBtn">
+                <i class="fas fa-lock"></i> Update Password
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    requireAuth("patient");
+
+    loadProfile();
+
+    async function loadProfile() {
+      try {
+        // ✅ Fixed: using /api/users/profile — works for ALL roles
+        const data = await apiGet("/api/users/profile");
+        const user = data.user;
+
+        document.getElementById("avatarCircle").textContent = user.name.charAt(0).toUpperCase();
+        document.getElementById("profileName").textContent  = user.name;
+        document.getElementById("profileEmail").textContent = user.email;
+        document.getElementById("profilePhone").textContent = user.phone || "No phone added";
+        document.getElementById("memberSince").textContent  = formatDate(user.createdAt);
+        document.getElementById("editName").value  = user.name;
+        document.getElementById("editEmail").value = user.email;
+        document.getElementById("editPhone").value = user.phone || "";
+      } catch (error) {
+        showAlert("Failed to load profile.", "error");
+      }
+    }
+
+    // Save profile name + phone
+    document.getElementById("profileForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("saveBtn");
+      btn.textContent = "Saving...";
+      btn.disabled = true;
+      try {
+        // ✅ Fixed: /api/users/profile — works for ALL roles
+        await apiPut("/api/users/profile", {
+          name:  document.getElementById("editName").value,
+          phone: document.getElementById("editPhone").value,
+        });
+
+        // Update localStorage
+        const u = getUser();
+        u.name  = document.getElementById("editName").value;
+        localStorage.setItem("user", JSON.stringify(u));
+
+        document.getElementById("profileName").textContent  = u.name;
+        document.getElementById("avatarCircle").textContent = u.name.charAt(0).toUpperCase();
+        document.getElementById("profilePhone").textContent =
+          document.getElementById("editPhone").value || "No phone added";
+
+        showAlert("Profile updated successfully!", "success");
+      } catch (error) {
+        showAlert(error.message || "Failed to update profile.", "error");
+      } finally {
+        btn.textContent = "Save Changes";
+        btn.disabled = false;
+      }
+    });
+
+    // Change password
+    document.getElementById("passwordForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newPassword     = document.getElementById("newPassword").value;
+      const confirmPassword = document.getElementById("confirmNewPassword").value;
+      const pwBox           = document.getElementById("pwAlertBox");
+      const btn             = document.getElementById("changePasswordBtn");
+
+      if (newPassword !== confirmPassword) {
+        pwBox.className = "alert alert-error";
+        pwBox.textContent = "Passwords do not match!";
+        pwBox.style.display = "block";
+        return;
+      }
+
+      btn.textContent = "Updating...";
+      btn.disabled = true;
+
+      try {
+        // ✅ Fixed: using dedicated change-password route
+        await apiPut("/api/users/change-password", { password: newPassword });
+        pwBox.className = "alert alert-success";
+        pwBox.textContent = "Password updated successfully!";
+        pwBox.style.display = "block";
+        document.getElementById("passwordForm").reset();
+      } catch (error) {
+        pwBox.className = "alert alert-error";
+        pwBox.textContent = error.message || "Failed to update password.";
+        pwBox.style.display = "block";
+      } finally {
+        btn.textContent = "Update Password";
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Doctor Profile | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><i class="fas fa-heartbeat"></i> MediCare</div>
+      <nav class="sidebar-menu">
+        <a href="doctor-dashboard.html"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="doctor-appointments.html"><i class="fas fa-calendar-check"></i> Appointments</a>
+        <a href="doctor-profile.html" class="active"><i class="fas fa-user-md"></i> My Profile</a>
+        <a href="logout.html"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </nav>
+    </aside>
+
+    <main class="dashboard-main">
+      <div class="dashboard-header"><h1>Doctor Profile</h1></div>
+
+      <div style="display:grid; grid-template-columns:280px 1fr; gap:28px; align-items:start;">
+
+        <!-- Profile card -->
+        <div class="table-card" style="text-align:center;">
+          <div id="avatarCircle"
+            style="width:100px; height:100px; border-radius:50%; margin:0 auto 16px;
+                   background:linear-gradient(135deg,var(--primary),var(--secondary));
+                   display:flex; align-items:center; justify-content:center;
+                   color:white; font-size:40px; font-weight:700;">D</div>
+          <h2 id="profileName" style="margin-bottom:4px;">Loading...</h2>
+          <p id="profileSpec" style="color:var(--primary); font-weight:600; margin-bottom:6px;"></p>
+          <p id="profileEmail" style="color:var(--gray); font-size:13px;"></p>
+          <div style="margin-top:16px;">
+            <span id="approvalBadge" class="badge badge-pending">Pending Approval</span>
+          </div>
+        </div>
+
+        <!-- Edit form -->
+        <div class="table-card">
+          <h3 style="margin-bottom:24px;">Update Professional Profile</h3>
+          <div id="alertBox" class="alert" style="display:none;"></div>
+
+          <form id="doctorProfileForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="editName" required/>
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input type="tel" id="editPhone"/>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Specialization</label>
+                <select id="editSpecialization" required>
+                  <option value="">Select specialization</option>
+                  <option>Cardiologist</option>
+                  <option>Dermatologist</option>
+                  <option>Neurologist</option>
+                  <option>Orthopedic</option>
+                  <option>Pediatrician</option>
+                  <option>Psychiatrist</option>
+                  <option>General Physician</option>
+                  <option>Dentist</option>
+                  <option>Gynecologist</option>
+                  <option>ENT Specialist</option>
+                  <option>Ophthalmologist</option>
+                  <option>Oncologist</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Years of Experience</label>
+                <input type="number" id="editExperience" min="0" max="60"/>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Consultation Fees (₹)</label>
+              <input type="number" id="editFees" min="0"/>
+            </div>
+
+            <div class="form-group">
+              <label>About / Bio</label>
+              <textarea id="editBio" rows="4"
+                placeholder="Write a short bio visible to patients..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="saveBtn">
+              <i class="fas fa-save"></i> Save Profile
+            </button>
+          </form>
+
+          <!-- Change Password -->
+          <div style="margin-top:36px; border-top:1px solid var(--border); padding-top:28px;">
+            <h3 style="margin-bottom:20px;">Change Password</h3>
+            <div id="pwAlertBox" class="alert" style="display:none;"></div>
+            <form id="passwordForm">
+              <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="newPassword" placeholder="Minimum 6 characters" minlength="6"/>
+              </div>
+              <div class="form-group">
+                <label>Confirm New Password</label>
+                <input type="password" id="confirmNewPassword" placeholder="Re-enter new password"/>
+              </div>
+              <button type="submit" class="btn btn-outline" id="changePasswordBtn">
+                <i class="fas fa-lock"></i> Update Password
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    requireAuth("doctor");
+
+    const user = getUser();
+    document.getElementById("avatarCircle").textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById("profileName").textContent  = "Dr. " + user.name;
+    document.getElementById("profileEmail").textContent = user.email;
+    document.getElementById("editName").value           = user.name;
+
+    loadDoctorProfile();
+
+    async function loadDoctorProfile() {
+      try {
+        // ✅ Load basic user profile
+        const userData = await apiGet("/api/users/profile");
+        document.getElementById("editPhone").value = userData.user.phone || "";
+
+        // Load doctor-specific profile
+        const data    = await apiGet("/api/doctors");
+        const doctors = data.doctors;
+        const myProfile = doctors.find(d => d.user?.email === user.email);
+
+        if (myProfile) {
+          document.getElementById("profileSpec").textContent  = myProfile.specialization;
+          document.getElementById("editSpecialization").value = myProfile.specialization;
+          document.getElementById("editExperience").value     = myProfile.experience;
+          document.getElementById("editFees").value           = myProfile.fees;
+          document.getElementById("editBio").value            = myProfile.bio;
+
+          if (myProfile.isApproved) {
+            document.getElementById("approvalBadge").className   = "badge badge-completed";
+            document.getElementById("approvalBadge").textContent = "Approved";
+          }
+        }
+      } catch (error) {
+        console.log("No doctor profile yet — will be created on first save.");
+      }
+    }
+
+    // Save profile
+    document.getElementById("doctorProfileForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("saveBtn");
+      btn.textContent = "Saving...";
+      btn.disabled = true;
+
+      try {
+        // ✅ Fixed: /api/users/profile works for doctors too
+        await apiPut("/api/users/profile", {
+          name:  document.getElementById("editName").value,
+          phone: document.getElementById("editPhone").value,
+        });
+
+        // Update doctor-specific data
+        await apiPut("/api/doctors/profile", {
+          specialization: document.getElementById("editSpecialization").value,
+          experience:     document.getElementById("editExperience").value,
+          fees:           document.getElementById("editFees").value,
+          bio:            document.getElementById("editBio").value,
+        });
+
+        // Update localStorage
+        const u = getUser();
+        u.name  = document.getElementById("editName").value;
+        localStorage.setItem("user", JSON.stringify(u));
+
+        document.getElementById("profileName").textContent = "Dr. " + u.name;
+        document.getElementById("profileSpec").textContent = document.getElementById("editSpecialization").value;
+
+        showAlert("Profile updated successfully!", "success");
+      } catch (error) {
+        showAlert(error.message || "Failed to update profile.", "error");
+      } finally {
+        btn.textContent = "Save Profile";
+        btn.disabled = false;
+      }
+    });
+
+    // Change password
+    document.getElementById("passwordForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newPassword     = document.getElementById("newPassword").value;
+      const confirmPassword = document.getElementById("confirmNewPassword").value;
+      const pwBox           = document.getElementById("pwAlertBox");
+      const btn             = document.getElementById("changePasswordBtn");
+
+      if (newPassword !== confirmPassword) {
+        pwBox.className = "alert alert-error";
+        pwBox.textContent = "Passwords do not match!";
+        pwBox.style.display = "block";
+        return;
+      }
+
+      btn.textContent = "Updating...";
+      btn.disabled = true;
+
+      try {
+        // ✅ Fixed: dedicated change-password route, works for all roles
+        await apiPut("/api/users/change-password", { password: newPassword });
+        pwBox.className = "alert alert-success";
+        pwBox.textContent = "Password updated successfully!";
+        pwBox.style.display = "block";
+        document.getElementById("passwordForm").reset();
+      } catch (error) {
+        pwBox.className = "alert alert-error";
+        pwBox.textContent = error.message || "Failed to update password.";
+        pwBox.style.display = "block";
+      } finally {
+        btn.textContent = "Update Password";
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

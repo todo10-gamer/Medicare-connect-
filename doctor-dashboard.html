@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Doctor Dashboard | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i class="fas fa-heartbeat"></i> MediCare
+      </div>
+      <nav class="sidebar-menu">
+        <a href="doctor-dashboard.html" class="active">
+          <i class="fas fa-home"></i> Dashboard
+        </a>
+        <a href="doctor-appointments.html">
+          <i class="fas fa-calendar-check"></i> Appointments
+        </a>
+        <a href="doctor-profile.html">
+          <i class="fas fa-user-md"></i> My Profile
+        </a>
+        <a href="#" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </nav>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="dashboard-main">
+
+      <div class="dashboard-header">
+        <h1>Doctor Dashboard</h1>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="color:var(--gray); font-size:14px;">Welcome,</span>
+          <strong id="doctorName" style="color:var(--primary);">Loading...</strong>
+        </div>
+      </div>
+
+      <!-- ============ STAT CARDS ============ -->
+      <div class="stats-row">
+
+        <div class="stat-box">
+          <div class="stat-box-icon blue">
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="totalAppointments">0</h3>
+            <p>Total Appointments</p>
+          </div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-box-icon orange">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="pendingAppointments">0</h3>
+            <p>Pending</p>
+          </div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-box-icon green">
+            <i class="fas fa-check-double"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="confirmedAppointments">0</h3>
+            <p>Confirmed</p>
+          </div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-box-icon blue" style="background:#8e44ad;">
+            <i class="fas fa-clipboard-check"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="completedAppointments">0</h3>
+            <p>Completed</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============ APPOINTMENTS TABLE ============ -->
+      <div class="table-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3 style="margin:0;">Patient Appointments</h3>
+          <!-- Filter dropdown to filter by status -->
+          <select id="statusFilter" onchange="filterAppointments()"
+            style="padding:8px 12px; border:1.5px solid var(--border);
+                   border-radius:8px; font-size:14px; background:var(--light);">
+            <option value="all">All Appointments</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div id="alertBox" class="alert" style="display:none;"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Problem</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="appointmentsTableBody">
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px; color:var(--gray);">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============ PRESCRIPTION MODAL ============ -->
+      <!-- Hidden panel that slides in when doctor clicks "Add Prescription" -->
+      <div id="prescriptionModal" style="display:none; position:fixed; top:0; left:0;
+           width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999;
+           justify-content:center; align-items:center;">
+        <div style="background:white; border-radius:16px; padding:36px;
+                    width:90%; max-width:500px; box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+          <h3 style="margin-bottom:20px;">Add Prescription</h3>
+          <input type="hidden" id="modalAppointmentId"/>
+          <div class="form-group">
+            <label>Prescription / Doctor Notes</label>
+            <textarea id="prescriptionText" rows="5"
+              placeholder="Enter prescription, diagnosis, or notes for the patient..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Update Appointment Status</label>
+            <select id="modalStatus">
+              <option value="confirmed">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:12px; justify-content:flex-end;">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="savePrescription()">Save</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+
+  <script>
+    // =============================================
+    //   Doctor Dashboard - JavaScript Logic
+    // =============================================
+
+    // Only doctors can access this page
+    requireAuth("doctor");
+
+    const user = getUser();
+
+    // Show doctor's name in the header
+    document.getElementById("doctorName").textContent = "Dr. " + user.name;
+
+    // Store all appointments so we can filter them without re-fetching
+    let allAppointments = [];
+
+    // Load appointments when page opens
+    loadAppointments();
+
+    // -----------------------------------------------
+    //   loadAppointments()
+    //   Fetches all appointments for this doctor
+    // -----------------------------------------------
+    async function loadAppointments() {
+      try {
+        const data = await apiGet("/api/appointments/my");
+        allAppointments = data.appointments;
+
+        // Update stat cards
+        document.getElementById("totalAppointments").textContent = allAppointments.length;
+        document.getElementById("pendingAppointments").textContent =
+          allAppointments.filter(a => a.status === "pending").length;
+        document.getElementById("confirmedAppointments").textContent =
+          allAppointments.filter(a => a.status === "confirmed").length;
+        document.getElementById("completedAppointments").textContent =
+          allAppointments.filter(a => a.status === "completed").length;
+
+        // Render the table with all appointments
+        renderTable(allAppointments);
+
+      } catch (error) {
+        document.getElementById("appointmentsTableBody").innerHTML = `
+          <tr><td colspan="6" style="text-align:center; padding:40px; color:var(--danger);">
+            Failed to load. Please refresh.
+          </td></tr>`;
+      }
+    }
+
+    // -----------------------------------------------
+    //   filterAppointments()
+    //   Filters the table based on selected status
+    // -----------------------------------------------
+    function filterAppointments() {
+      const filter = document.getElementById("statusFilter").value;
+
+      // If "all" selected, show everything
+      // Otherwise filter the array by status
+      const filtered = filter === "all"
+        ? allAppointments
+        : allAppointments.filter(a => a.status === filter);
+
+      renderTable(filtered);
+    }
+
+    // -----------------------------------------------
+    //   renderTable(appointments)
+    //   Builds the HTML table rows from the data
+    // -----------------------------------------------
+    function renderTable(appointments) {
+      const tbody = document.getElementById("appointmentsTableBody");
+
+      if (appointments.length === 0) {
+        tbody.innerHTML = `
+          <tr><td colspan="6" style="text-align:center; padding:40px; color:var(--gray);">
+            No appointments found.
+          </td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = appointments.map(appt => `
+        <tr>
+          <td>
+            <strong>${appt.patient?.name || "N/A"}</strong><br/>
+            <small style="color:var(--gray);">${appt.patient?.phone || appt.patient?.email || ""}</small>
+          </td>
+          <td>${formatDate(appt.date)}</td>
+          <td>${appt.timeSlot}</td>
+          <td>${appt.problem || "—"}</td>
+          <td><span class="badge badge-${appt.status}">${appt.status}</span></td>
+          <td style="display:flex; gap:8px; flex-wrap:wrap;">
+            ${appt.status !== "completed" && appt.status !== "cancelled"
+              ? `<button class="btn btn-primary"
+                   style="padding:6px 12px; font-size:12px;"
+                   onclick="openModal('${appt._id}', '${appt.status}')">
+                   <i class="fas fa-prescription"></i> Prescribe
+                 </button>`
+              : ""
+            }
+            ${appt.prescription
+              ? `<button class="btn btn-outline"
+                   style="padding:6px 12px; font-size:12px;"
+                   onclick="viewPrescription('${appt.prescription}')">
+                   View Rx
+                 </button>`
+              : ""
+            }
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    // -----------------------------------------------
+    //   openModal(appointmentId, currentStatus)
+    //   Opens the prescription modal for an appointment
+    // -----------------------------------------------
+    function openModal(appointmentId, currentStatus) {
+      document.getElementById("modalAppointmentId").value = appointmentId;
+      document.getElementById("modalStatus").value = currentStatus;
+      document.getElementById("prescriptionText").value = "";
+      // Show the modal
+      document.getElementById("prescriptionModal").style.display = "flex";
+    }
+
+    // Close the modal
+    function closeModal() {
+      document.getElementById("prescriptionModal").style.display = "none";
+    }
+
+    // -----------------------------------------------
+    //   savePrescription()
+    //   Sends the prescription and status to the backend
+    // -----------------------------------------------
+    async function savePrescription() {
+      const id           = document.getElementById("modalAppointmentId").value;
+      const prescription = document.getElementById("prescriptionText").value;
+      const status       = document.getElementById("modalStatus").value;
+
+      try {
+        // Call PUT /api/appointments/:id/status
+        await apiPut(`/api/appointments/${id}/status`, { status, prescription });
+
+        closeModal();
+        showAlert("Appointment updated successfully!", "success");
+        loadAppointments(); // Refresh the table
+
+      } catch (error) {
+        showAlert(error.message || "Failed to update.", "error");
+      }
+    }
+
+    // Show prescription in an alert popup
+    function viewPrescription(prescription) {
+      alert("Prescription:\n\n" + prescription);
+    }
+  </script>
+
+</body>
+</html>

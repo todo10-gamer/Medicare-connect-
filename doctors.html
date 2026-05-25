@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Find Doctors | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <i class="fas fa-heartbeat"></i> MediCare Connect
+    </div>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="doctors.html">Doctors</a></li>
+    </ul>
+    <div class="nav-auth">
+      <a href="login.html" class="btn btn-outline">Login</a>
+      <a href="register.html" class="btn btn-primary">Register</a>
+    </div>
+  </nav>
+
+  <!-- Page content -->
+  <section class="doctors-page">
+
+    <h2 class="section-title">Find a Doctor</h2>
+
+    <!-- Search bar -->
+    <div style="max-width:500px; margin:0 auto 40px;">
+      <input type="text" id="searchInput" placeholder="Search by name or specialization..."
+        oninput="filterDoctors()"
+        style="width:100%; padding:14px 20px; border:2px solid var(--border);
+               border-radius:12px; font-size:15px; outline:none;"/>
+    </div>
+
+    <div id="alertBox" class="alert" style="display:none;"></div>
+
+    <!-- Doctors grid - filled by JavaScript -->
+    <div class="doctors-grid" id="doctorsGrid">
+      <p style="color:var(--gray); text-align:center; grid-column:1/-1;">
+        <i class="fas fa-spinner fa-spin"></i> Loading doctors...
+      </p>
+    </div>
+
+  </section>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+
+  <script>
+    // Store all doctors for filtering
+    let allDoctors = [];
+
+    // Load doctors when page opens
+    loadDoctors();
+
+    async function loadDoctors() {
+      try {
+        // GET /api/doctors - public route, no login needed
+        const data = await apiGet("/api/doctors");
+        allDoctors = data.doctors;
+
+        renderDoctors(allDoctors);
+
+      } catch (error) {
+        document.getElementById("doctorsGrid").innerHTML =
+          `<p style="color:var(--danger); text-align:center; grid-column:1/-1;">
+            Failed to load doctors. Please try again.
+          </p>`;
+      }
+    }
+
+    // Filter doctors by search input
+    function filterDoctors() {
+      const query = document.getElementById("searchInput").value.toLowerCase();
+      const filtered = allDoctors.filter(doc =>
+        doc.user?.name.toLowerCase().includes(query) ||
+        doc.specialization.toLowerCase().includes(query)
+      );
+      renderDoctors(filtered);
+    }
+
+    // Build the doctor cards grid
+    function renderDoctors(doctors) {
+      const grid = document.getElementById("doctorsGrid");
+
+      if (doctors.length === 0) {
+        grid.innerHTML = `
+          <p style="color:var(--gray); text-align:center; grid-column:1/-1; padding:60px 0;">
+            No doctors found.
+          </p>`;
+        return;
+      }
+
+      grid.innerHTML = doctors.map(doc => `
+        <div class="doctor-card">
+          <!-- Avatar circle with doctor's initial -->
+          <div class="doctor-avatar">
+            ${doc.user?.name?.charAt(0).toUpperCase() || "D"}
+          </div>
+          <h3>Dr. ${doc.user?.name || "N/A"}</h3>
+          <p class="specialization">${doc.specialization}</p>
+          <p class="fees">
+            <i class="fas fa-rupee-sign"></i> ${doc.fees}/- per visit &nbsp;|&nbsp;
+            <i class="fas fa-briefcase"></i> ${doc.experience} yrs exp
+          </p>
+          ${doc.bio
+            ? `<p style="font-size:13px; color:var(--gray); margin-bottom:16px;">${doc.bio}</p>`
+            : ""
+          }
+          <!-- Book button - only shown if logged in as patient -->
+          <a href="book-appointment.html?doctorId=${doc._id}"
+             class="btn btn-primary" style="width:100%; text-align:center;">
+            Book Appointment
+          </a>
+        </div>
+      `).join("");
+    }
+  </script>
+
+</body>
+</html>

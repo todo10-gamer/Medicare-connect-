@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Appointments | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i class="fas fa-heartbeat"></i> MediCare
+      </div>
+      <nav class="sidebar-menu">
+        <a href="doctor-dashboard.html">
+          <i class="fas fa-home"></i> Dashboard
+        </a>
+        <a href="doctor-appointments.html" class="active">
+          <i class="fas fa-calendar-check"></i> Appointments
+        </a>
+        <a href="doctor-profile.html">
+          <i class="fas fa-user-md"></i> My Profile
+        </a>
+        <a href="logout.html">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </nav>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="dashboard-main">
+
+      <div class="dashboard-header">
+        <h1>My Appointments</h1>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="color:var(--gray); font-size:14px;">Dr.</span>
+          <strong id="doctorName" style="color:var(--primary);">Loading...</strong>
+        </div>
+      </div>
+
+      <!-- ============ STAT CARDS ============ -->
+      <div class="stats-row" style="margin-bottom:28px;">
+        <div class="stat-box">
+          <div class="stat-box-icon blue"><i class="fas fa-calendar-alt"></i></div>
+          <div class="stat-box-info">
+            <h3 id="statTotal">0</h3>
+            <p>Total</p>
+          </div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon orange"><i class="fas fa-hourglass-half"></i></div>
+          <div class="stat-box-info">
+            <h3 id="statPending">0</h3>
+            <p>Pending</p>
+          </div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon green"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-box-info">
+            <h3 id="statConfirmed">0</h3>
+            <p>Confirmed</p>
+          </div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon blue" style="background:#8e44ad;">
+            <i class="fas fa-clipboard-check"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="statCompleted">0</h3>
+            <p>Completed</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ FILTER TABS ============ -->
+      <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
+        <button class="btn btn-primary"  id="tab-all"       onclick="filterByStatus('all')">All</button>
+        <button class="btn btn-outline"  id="tab-pending"   onclick="filterByStatus('pending')">Pending</button>
+        <button class="btn btn-outline"  id="tab-confirmed" onclick="filterByStatus('confirmed')">Confirmed</button>
+        <button class="btn btn-outline"  id="tab-completed" onclick="filterByStatus('completed')">Completed</button>
+        <button class="btn btn-outline"  id="tab-cancelled" onclick="filterByStatus('cancelled')">Cancelled</button>
+      </div>
+
+      <div id="alertBox" class="alert" style="display:none;"></div>
+
+      <!-- ============ APPOINTMENTS CARDS ============ -->
+      <div id="appointmentsGrid"
+        style="display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:20px;">
+        <p style="color:var(--gray);">
+          <i class="fas fa-spinner fa-spin"></i> Loading appointments...
+        </p>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ============ PRESCRIPTION MODAL ============ -->
+  <div id="prescriptionModal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+           background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:16px; padding:36px; width:90%;
+                max-width:520px; box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <h3 style="margin:0;">Update Appointment</h3>
+        <button onclick="closeModal()"
+          style="background:none; border:none; font-size:22px; cursor:pointer; color:var(--gray);">
+          &times;
+        </button>
+      </div>
+
+      <!-- Patient info inside modal -->
+      <div id="modalPatientInfo"
+        style="background:var(--light); border-radius:10px; padding:14px; margin-bottom:20px;
+               font-size:14px; color:var(--text);">
+      </div>
+
+      <input type="hidden" id="modalAppointmentId"/>
+
+      <div class="form-group">
+        <label>Update Status</label>
+        <select id="modalStatus">
+          <option value="confirmed">Confirmed — appointment is set</option>
+          <option value="completed">Completed — appointment done</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Prescription / Doctor Notes</label>
+        <textarea id="prescriptionText" rows="5"
+          placeholder="Write diagnosis, medicine, dosage, or any notes for the patient..."></textarea>
+      </div>
+
+      <div style="display:flex; gap:12px; justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="savePrescription()" id="saveModalBtn">
+          <i class="fas fa-save"></i> Save
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+
+  <script>
+    // =============================================
+    //   Doctor Appointments Page - JavaScript
+    // =============================================
+
+    // Only doctors can view this page
+    requireAuth("doctor");
+
+    const user = getUser();
+    document.getElementById("doctorName").textContent = user.name;
+
+    // Store all appointments for filtering without re-fetching
+    let allAppointments = [];
+
+    // Load when page opens
+    loadAppointments();
+
+    // -----------------------------------------------
+    //   loadAppointments()
+    //   Fetches all appointments for this doctor
+    // -----------------------------------------------
+    async function loadAppointments() {
+      try {
+        const data = await apiGet("/api/appointments/my");
+        allAppointments = data.appointments;
+
+        // Update stat cards
+        document.getElementById("statTotal").textContent     = allAppointments.length;
+        document.getElementById("statPending").textContent   = allAppointments.filter(a => a.status === "pending").length;
+        document.getElementById("statConfirmed").textContent = allAppointments.filter(a => a.status === "confirmed").length;
+        document.getElementById("statCompleted").textContent = allAppointments.filter(a => a.status === "completed").length;
+
+        renderCards(allAppointments);
+
+      } catch (error) {
+        document.getElementById("appointmentsGrid").innerHTML =
+          `<p style="color:var(--danger);">Failed to load appointments. Please refresh.</p>`;
+      }
+    }
+
+    // -----------------------------------------------
+    //   filterByStatus(status)
+    //   Called when a tab button is clicked
+    // -----------------------------------------------
+    function filterByStatus(status) {
+      // Update tab styles
+      ["all","pending","confirmed","completed","cancelled"].forEach(s => {
+        document.getElementById(`tab-${s}`).className =
+          s === status ? "btn btn-primary" : "btn btn-outline";
+      });
+
+      const filtered = status === "all"
+        ? allAppointments
+        : allAppointments.filter(a => a.status === status);
+
+      renderCards(filtered);
+    }
+
+    // -----------------------------------------------
+    //   renderCards(appointments)
+    //   Builds the appointment card grid
+    // -----------------------------------------------
+    function renderCards(appointments) {
+      const grid = document.getElementById("appointmentsGrid");
+
+      if (appointments.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1; text-align:center; padding:60px; color:var(--gray);">
+            <i class="fas fa-calendar-times" style="font-size:48px; margin-bottom:16px; display:block;"></i>
+            <p style="font-size:18px;">No appointments found.</p>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = appointments.map(appt => `
+        <div style="background:white; border-radius:12px; padding:24px;
+                    box-shadow:var(--shadow); border:1px solid var(--border);
+                    border-left:4px solid ${
+                      appt.status === 'pending'   ? 'var(--warning)'  :
+                      appt.status === 'confirmed' ? 'var(--primary)'  :
+                      appt.status === 'completed' ? 'var(--success)'  : 'var(--danger)'
+                    };">
+
+          <!-- Top: Patient info + badge -->
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+            <div style="width:46px; height:46px; border-radius:50%; flex-shrink:0;
+                        background:linear-gradient(135deg,#667eea,#764ba2);
+                        display:flex; align-items:center; justify-content:center;
+                        color:white; font-size:18px; font-weight:700;">
+              ${appt.patient?.name?.charAt(0).toUpperCase() || "P"}
+            </div>
+            <div style="flex:1;">
+              <strong style="font-size:15px;">${appt.patient?.name || "N/A"}</strong><br/>
+              <span style="font-size:12px; color:var(--gray);">
+                ${appt.patient?.phone || appt.patient?.email || "No contact"}
+              </span>
+            </div>
+            <span class="badge badge-${appt.status}">${appt.status}</span>
+          </div>
+
+          <!-- Appointment details -->
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:14px;
+                      padding:14px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+            <div style="display:flex; gap:10px;">
+              <i class="fas fa-calendar" style="color:var(--primary); width:16px; margin-top:2px;"></i>
+              <span><strong>Date:</strong> ${formatDate(appt.date)}</span>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <i class="fas fa-clock" style="color:var(--primary); width:16px; margin-top:2px;"></i>
+              <span><strong>Time:</strong> ${appt.timeSlot}</span>
+            </div>
+            ${appt.problem ? `
+            <div style="display:flex; gap:10px;">
+              <i class="fas fa-notes-medical" style="color:var(--primary); width:16px; margin-top:2px;"></i>
+              <span><strong>Problem:</strong> ${appt.problem}</span>
+            </div>` : ""}
+          </div>
+
+          <!-- Prescription (if already added) -->
+          ${appt.prescription ? `
+          <div style="margin-top:12px; background:#f0fff4; padding:12px; border-radius:8px;
+                      border-left:3px solid var(--success); font-size:13px;">
+            <strong><i class="fas fa-prescription-bottle-alt"></i> Prescription:</strong><br/>
+            <span style="color:var(--text);">${appt.prescription}</span>
+          </div>` : ""}
+
+          <!-- Action buttons -->
+          <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+
+            ${appt.status !== "completed" && appt.status !== "cancelled" ? `
+            <button class="btn btn-primary"
+              style="flex:1; padding:10px; font-size:13px;"
+              onclick="openModal('${appt._id}', '${appt.status}',
+                '${appt.patient?.name || ""}',
+                '${appt.patient?.phone || appt.patient?.email || ""}',
+                '${formatDate(appt.date)}',
+                '${appt.timeSlot}',
+                \`${(appt.prescription || "").replace(/`/g,"'")}\`)">
+              <i class="fas fa-edit"></i>
+              ${appt.prescription ? "Update" : "Add Prescription"}
+            </button>` : ""}
+
+            ${appt.status === "pending" ? `
+            <button class="btn btn-success"
+              style="flex:1; padding:10px; font-size:13px;"
+              onclick="quickConfirm('${appt._id}')">
+              <i class="fas fa-check"></i> Confirm
+            </button>` : ""}
+
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // -----------------------------------------------
+    //   openModal(...)
+    //   Opens the prescription/update modal
+    // -----------------------------------------------
+    function openModal(id, status, patientName, patientContact, date, time, prescription) {
+      document.getElementById("modalAppointmentId").value = id;
+      document.getElementById("modalStatus").value        = status;
+      document.getElementById("prescriptionText").value   = prescription || "";
+
+      // Show patient info inside modal
+      document.getElementById("modalPatientInfo").innerHTML = `
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <span><i class="fas fa-user" style="color:var(--primary);"></i> <strong>${patientName}</strong></span>
+          <span><i class="fas fa-phone" style="color:var(--primary);"></i> ${patientContact}</span>
+          <span><i class="fas fa-calendar" style="color:var(--primary);"></i> ${date} at ${time}</span>
+        </div>
+      `;
+
+      document.getElementById("prescriptionModal").style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("prescriptionModal").style.display = "none";
+    }
+
+    // -----------------------------------------------
+    //   savePrescription()
+    //   Sends the update to the backend
+    // -----------------------------------------------
+    async function savePrescription() {
+      const id           = document.getElementById("modalAppointmentId").value;
+      const status       = document.getElementById("modalStatus").value;
+      const prescription = document.getElementById("prescriptionText").value;
+      const btn          = document.getElementById("saveModalBtn");
+
+      btn.textContent = "Saving...";
+      btn.disabled    = true;
+
+      try {
+        await apiPut(`/api/appointments/${id}/status`, { status, prescription });
+        closeModal();
+        showAlert("Appointment updated successfully!", "success");
+        loadAppointments(); // Refresh cards
+      } catch (error) {
+        showAlert(error.message || "Failed to update appointment.", "error");
+      } finally {
+        btn.innerHTML = '<i class="fas fa-save"></i> Save';
+        btn.disabled  = false;
+      }
+    }
+
+    // -----------------------------------------------
+    //   quickConfirm(id)
+    //   One-click confirm a pending appointment
+    // -----------------------------------------------
+    async function quickConfirm(id) {
+      try {
+        await apiPut(`/api/appointments/${id}/status`, { status: "confirmed" });
+        showAlert("Appointment confirmed!", "success");
+        loadAppointments();
+      } catch (error) {
+        showAlert(error.message || "Failed to confirm.", "error");
+      }
+    }
+
+    // Close modal if user clicks outside it
+    document.getElementById("prescriptionModal").addEventListener("click", function(e) {
+      if (e.target === this) closeModal();
+    });
+  </script>
+
+</body>
+</html>

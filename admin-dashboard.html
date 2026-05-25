@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i class="fas fa-heartbeat"></i> MediCare
+      </div>
+      <nav class="sidebar-menu">
+        <a href="admin-dashboard.html" class="active">
+          <i class="fas fa-chart-pie"></i> Dashboard
+        </a>
+        <a href="#" onclick="showSection('usersSection')">
+          <i class="fas fa-users"></i> Manage Users
+        </a>
+        <a href="#" onclick="showSection('doctorsSection')">
+          <i class="fas fa-user-md"></i> Approve Doctors
+        </a>
+        <a href="#" onclick="showSection('appointmentsSection')">
+          <i class="fas fa-calendar-alt"></i> All Appointments
+        </a>
+        <a href="#" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </nav>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="dashboard-main">
+
+      <div class="dashboard-header">
+        <h1>Admin Dashboard</h1>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="color:var(--gray); font-size:14px;">Logged in as</span>
+          <strong id="adminName" style="color:var(--primary);">Admin</strong>
+        </div>
+      </div>
+
+      <div id="alertBox" class="alert" style="display:none;"></div>
+
+      <!-- ============ STAT CARDS ============ -->
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-box-icon blue">
+            <i class="fas fa-users"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="totalPatients">0</h3>
+            <p>Total Patients</p>
+          </div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon green">
+            <i class="fas fa-user-md"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="totalDoctors">0</h3>
+            <p>Total Doctors</p>
+          </div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon orange">
+            <i class="fas fa-calendar-check"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="totalAppointments">0</h3>
+            <p>Total Appointments</p>
+          </div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon red">
+            <i class="fas fa-user-clock"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="pendingDoctors">0</h3>
+            <p>Pending Approvals</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ USERS SECTION ============ -->
+      <div id="usersSection" class="table-card" style="margin-bottom:28px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3 style="margin:0;">All Registered Users</h3>
+          <button class="btn btn-outline" style="font-size:13px;" onclick="loadUsers()">
+            <i class="fas fa-sync"></i> Refresh
+          </button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px; color:var(--gray);">
+                <i class="fas fa-spinner fa-spin"></i> Loading users...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============ DOCTORS APPROVAL SECTION ============ -->
+      <div id="doctorsSection" class="table-card" style="margin-bottom:28px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3 style="margin:0;">Doctor Approval Requests</h3>
+          <button class="btn btn-outline" style="font-size:13px;" onclick="loadDoctors()">
+            <i class="fas fa-sync"></i> Refresh
+          </button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Doctor Name</th>
+              <th>Email</th>
+              <th>Specialization</th>
+              <th>Experience</th>
+              <th>Approval Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="doctorsTableBody">
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px; color:var(--gray);">
+                <i class="fas fa-spinner fa-spin"></i> Loading doctors...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============ ALL APPOINTMENTS SECTION ============ -->
+      <div id="appointmentsSection" class="table-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3 style="margin:0;">All Appointments</h3>
+          <button class="btn btn-outline" style="font-size:13px;" onclick="loadAllAppointments()">
+            <i class="fas fa-sync"></i> Refresh
+          </button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Doctor</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="appointmentsTableBody">
+            <tr>
+              <td colspan="5" style="text-align:center; padding:40px; color:var(--gray);">
+                <i class="fas fa-spinner fa-spin"></i> Loading appointments...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+
+  <script>
+    // =============================================
+    //   Admin Dashboard - JavaScript Logic
+    // =============================================
+
+    // Only admins can access this page
+    requireAuth("admin");
+
+    const user = getUser();
+    document.getElementById("adminName").textContent = user.name;
+
+    // Load all data when the page opens
+    loadDashboardStats();
+    loadUsers();
+    loadDoctors();
+    loadAllAppointments();
+
+    // -----------------------------------------------
+    //   showSection(sectionId)
+    //   Scrolls to a specific section when
+    //   sidebar link is clicked
+    // -----------------------------------------------
+    function showSection(sectionId) {
+      document.getElementById(sectionId).scrollIntoView({ behavior: "smooth" });
+    }
+
+    // -----------------------------------------------
+    //   loadDashboardStats()
+    //   Fetches overall system statistics
+    // -----------------------------------------------
+    async function loadDashboardStats() {
+      try {
+        const data = await apiGet("/api/admin/dashboard");
+        const stats = data.stats;
+
+        // Fill in the stat cards
+        document.getElementById("totalPatients").textContent     = stats.totalUsers;
+        document.getElementById("totalDoctors").textContent      = stats.totalDoctors;
+        document.getElementById("totalAppointments").textContent = stats.totalAppointments;
+        document.getElementById("pendingDoctors").textContent    = stats.pendingDoctors;
+
+      } catch (error) {
+        console.error("Failed to load stats:", error.message);
+      }
+    }
+
+    // -----------------------------------------------
+    //   loadUsers()
+    //   Fetches and displays all registered users
+    // -----------------------------------------------
+    async function loadUsers() {
+      try {
+        const data  = await apiGet("/api/admin/users");
+        const users = data.users;
+        const tbody = document.getElementById("usersTableBody");
+
+        if (users.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--gray);">No users found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => `
+          <tr>
+            <td><strong>${u.name}</strong></td>
+            <td>${u.email}</td>
+            <td>
+              <!-- Color-coded role badge -->
+              <span class="badge" style="background:${
+                u.role === 'admin'  ? '#e8f0ff' :
+                u.role === 'doctor' ? '#d1f5e0' : '#e0f4ff'};
+                color:${
+                u.role === 'admin'  ? '#3c5ab4' :
+                u.role === 'doctor' ? '#1a7a40' : '#0077b6'};">
+                ${u.role}
+              </span>
+            </td>
+            <td>${formatDate(u.createdAt)}</td>
+            <td>
+              <span class="badge ${u.isActive ? 'badge-confirmed' : 'badge-cancelled'}">
+                ${u.isActive ? 'Active' : 'Blocked'}
+              </span>
+            </td>
+            <td>
+              <!-- Don't show delete for admin accounts -->
+              ${u.role !== 'admin'
+                ? `<button class="btn btn-danger"
+                     style="padding:5px 12px; font-size:12px;"
+                     onclick="deleteUser('${u._id}', '${u.name}')">
+                     Delete
+                   </button>`
+                : '<span style="color:var(--gray); font-size:12px;">Protected</span>'
+              }
+            </td>
+          </tr>
+        `).join("");
+
+      } catch (error) {
+        document.getElementById("usersTableBody").innerHTML =
+          `<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:30px;">Failed to load users.</td></tr>`;
+      }
+    }
+
+    // -----------------------------------------------
+    //   loadDoctors()
+    //   Fetches doctor profiles for admin to approve
+    // -----------------------------------------------
+    async function loadDoctors() {
+      try {
+        const data    = await apiGet("/api/doctors");
+        const doctors = data.doctors;
+        const tbody   = document.getElementById("doctorsTableBody");
+
+        if (doctors.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--gray);">No doctor profiles found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = doctors.map(doc => `
+          <tr>
+            <td><strong>Dr. ${doc.user?.name || "N/A"}</strong></td>
+            <td>${doc.user?.email || "N/A"}</td>
+            <td>${doc.specialization}</td>
+            <td>${doc.experience} years</td>
+            <td>
+              <span class="badge ${doc.isApproved ? 'badge-completed' : 'badge-pending'}">
+                ${doc.isApproved ? 'Approved' : 'Pending'}
+              </span>
+            </td>
+            <td>
+              ${!doc.isApproved
+                ? `<button class="btn btn-success"
+                     style="padding:5px 12px; font-size:12px;"
+                     onclick="approveDoctor('${doc._id}')">
+                     Approve
+                   </button>`
+                : '<span style="color:var(--success); font-size:12px;"><i class="fas fa-check"></i> Approved</span>'
+              }
+            </td>
+          </tr>
+        `).join("");
+
+      } catch (error) {
+        document.getElementById("doctorsTableBody").innerHTML =
+          `<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:30px;">Failed to load doctors.</td></tr>`;
+      }
+    }
+
+    // -----------------------------------------------
+    //   loadAllAppointments()
+    //   Fetches every appointment in the system
+    // -----------------------------------------------
+    async function loadAllAppointments() {
+      try {
+        const data         = await apiGet("/api/admin/appointments");
+        const appointments = data.appointments;
+        const tbody        = document.getElementById("appointmentsTableBody");
+
+        if (appointments.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--gray);">No appointments yet.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = appointments.map(appt => `
+          <tr>
+            <td>${appt.patient?.name || "N/A"}</td>
+            <td>Dr. ${appt.doctor?.name || "N/A"}</td>
+            <td>${formatDate(appt.date)}</td>
+            <td>${appt.timeSlot}</td>
+            <td><span class="badge badge-${appt.status}">${appt.status}</span></td>
+          </tr>
+        `).join("");
+
+      } catch (error) {
+        document.getElementById("appointmentsTableBody").innerHTML =
+          `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding:30px;">Failed to load appointments.</td></tr>`;
+      }
+    }
+
+    // -----------------------------------------------
+    //   approveDoctor(doctorId)
+    //   Approves a doctor's profile
+    // -----------------------------------------------
+    async function approveDoctor(doctorId) {
+      try {
+        await apiPut(`/api/admin/approve-doctor/${doctorId}`, {});
+        showAlert("Doctor approved successfully!", "success");
+        loadDoctors();         // Refresh the doctors table
+        loadDashboardStats();  // Update the pending count
+      } catch (error) {
+        showAlert(error.message || "Failed to approve doctor.", "error");
+      }
+    }
+
+    // -----------------------------------------------
+    //   deleteUser(userId, userName)
+    //   Deletes a user after confirmation
+    // -----------------------------------------------
+    async function deleteUser(userId, userName) {
+      if (!confirm(`Are you sure you want to delete "${userName}"? This cannot be undone.`)) return;
+
+      try {
+        await apiDelete(`/api/admin/users/${userId}`);
+        showAlert(`${userName} deleted successfully.`, "success");
+        loadUsers();           // Refresh users table
+        loadDashboardStats();  // Update total count
+      } catch (error) {
+        showAlert(error.message || "Failed to delete user.", "error");
+      }
+    }
+  </script>
+
+</body>
+</html>

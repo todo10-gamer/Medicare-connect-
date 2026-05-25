@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book Appointment | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i class="fas fa-heartbeat"></i> MediCare
+      </div>
+      <nav class="sidebar-menu">
+        <a href="patient-dashboard.html"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="book-appointment.html" class="active"><i class="fas fa-calendar-plus"></i> Book Appointment</a>
+        <a href="my-appointments.html"><i class="fas fa-calendar-check"></i> My Appointments</a>
+        <a href="doctors.html"><i class="fas fa-user-md"></i> Find Doctors</a>
+        <a href="patient-profile.html"><i class="fas fa-user"></i> My Profile</a>
+        <a href="logout.html"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </nav>
+    </aside>
+
+    <main class="dashboard-main">
+
+      <div class="dashboard-header">
+        <h1>Book an Appointment</h1>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start;">
+
+        <!-- ============ LEFT: DOCTOR SELECTION ============ -->
+        <div class="table-card">
+          <h3 style="margin-bottom:16px;">Step 1 — Select a Doctor</h3>
+
+          <input type="text" id="doctorSearch"
+            placeholder="Search by name or specialization..."
+            oninput="filterDoctors()"
+            style="width:100%; padding:10px 14px; border:1.5px solid var(--border);
+                   border-radius:8px; font-size:14px; margin-bottom:16px; outline:none;"/>
+
+          <div id="doctorsList"
+            style="display:flex; flex-direction:column; gap:12px; max-height:500px; overflow-y:auto;">
+            <p style="color:var(--gray); text-align:center; padding:20px;">
+              <i class="fas fa-spinner fa-spin"></i> Loading doctors...
+            </p>
+          </div>
+        </div>
+
+        <!-- ============ RIGHT: BOOKING FORM ============ -->
+        <div class="table-card">
+          <h3 style="margin-bottom:20px;">Step 2 — Fill Appointment Details</h3>
+
+          <div id="alertBox" class="alert" style="display:none;"></div>
+
+          <!-- Selected doctor display box -->
+          <div id="selectedDoctorBox"
+            style="background:var(--light); border:2px dashed var(--border);
+                   border-radius:10px; padding:16px; margin-bottom:20px;
+                   text-align:center; color:var(--gray);">
+            <i class="fas fa-user-md" style="font-size:24px; margin-bottom:8px;"></i>
+            <p>No doctor selected yet.<br/>Click a doctor on the left to select.</p>
+          </div>
+
+          <form id="bookingForm">
+
+            <!-- 
+              IMPORTANT FIX:
+              We now store doctor.user._id (the User ID of the doctor)
+              instead of doctor._id (the Doctor profile ID).
+              The booking API does User.findById(doctorId) so it needs the User ID.
+            -->
+            <input type="hidden" id="selectedDoctorId"/>
+
+            <div class="form-group">
+              <label for="appointmentDate">
+                <i class="fas fa-calendar"></i> Appointment Date
+              </label>
+              <input type="date" id="appointmentDate" required/>
+            </div>
+
+            <div class="form-group">
+              <label for="timeSlot">
+                <i class="fas fa-clock"></i> Time Slot
+              </label>
+              <select id="timeSlot" required>
+                <option value="">-- Select a time slot --</option>
+                <option value="09:00 AM">09:00 AM</option>
+                <option value="09:30 AM">09:30 AM</option>
+                <option value="10:00 AM">10:00 AM</option>
+                <option value="10:30 AM">10:30 AM</option>
+                <option value="11:00 AM">11:00 AM</option>
+                <option value="11:30 AM">11:30 AM</option>
+                <option value="12:00 PM">12:00 PM</option>
+                <option value="02:00 PM">02:00 PM</option>
+                <option value="02:30 PM">02:30 PM</option>
+                <option value="03:00 PM">03:00 PM</option>
+                <option value="03:30 PM">03:30 PM</option>
+                <option value="04:00 PM">04:00 PM</option>
+                <option value="04:30 PM">04:30 PM</option>
+                <option value="05:00 PM">05:00 PM</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="problem">
+                <i class="fas fa-notes-medical"></i> Describe Your Problem
+              </label>
+              <textarea id="problem" rows="4"
+                placeholder="Describe your symptoms or reason for visit..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="bookBtn">
+              <i class="fas fa-calendar-check"></i> Confirm Booking
+            </button>
+
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+
+  <script>
+    requireAuth("patient");
+
+    let allDoctors = [];
+
+    // Set minimum date to today
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("appointmentDate").min = today;
+
+    // Check if a doctor was pre-selected via URL ?doctorId=xxx
+    const urlParams   = new URLSearchParams(window.location.search);
+    const preSelected = urlParams.get("doctorId");
+
+    loadDoctors();
+
+    async function loadDoctors() {
+      try {
+        const data = await apiGet("/api/doctors");
+        allDoctors = data.doctors;
+        renderDoctors(allDoctors);
+
+        // If pre-selected via URL, auto-select that doctor
+        if (preSelected) {
+          // preSelected could be doctor profile ID or user ID — find by either
+          const doctor = allDoctors.find(d =>
+            d._id === preSelected || d.user?._id === preSelected
+          );
+          if (doctor) selectDoctor(doctor);
+        }
+
+      } catch (error) {
+        document.getElementById("doctorsList").innerHTML =
+          `<p style="color:var(--danger); text-align:center;">Failed to load doctors.</p>`;
+      }
+    }
+
+    function filterDoctors() {
+      const query    = document.getElementById("doctorSearch").value.toLowerCase();
+      const filtered = allDoctors.filter(doc =>
+        doc.user?.name.toLowerCase().includes(query) ||
+        doc.specialization.toLowerCase().includes(query)
+      );
+      renderDoctors(filtered);
+    }
+
+    function renderDoctors(doctors) {
+      const list = document.getElementById("doctorsList");
+
+      if (doctors.length === 0) {
+        list.innerHTML = `<p style="color:var(--gray); text-align:center; padding:20px;">No doctors found.</p>`;
+        return;
+      }
+
+      list.innerHTML = doctors.map(doc => `
+        <div
+          id="doctorCard_${doc._id}"
+          onclick="selectDoctor_byId('${doc._id}')"
+          style="border:2px solid var(--border); border-radius:10px; padding:14px;
+                 cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:14px;">
+          <div style="width:48px; height:48px; border-radius:50%;
+                      background:linear-gradient(135deg, var(--primary), var(--secondary));
+                      display:flex; align-items:center; justify-content:center;
+                      color:white; font-size:20px; font-weight:700; flex-shrink:0;">
+            ${doc.user?.name?.charAt(0).toUpperCase() || "D"}
+          </div>
+          <div style="flex:1;">
+            <strong style="font-size:15px;">Dr. ${doc.user?.name || "N/A"}</strong><br/>
+            <span style="font-size:13px; color:var(--primary);">${doc.specialization}</span><br/>
+            <span style="font-size:12px; color:var(--gray);">
+              ₹${doc.fees}/visit &nbsp;·&nbsp; ${doc.experience} yrs exp
+            </span>
+          </div>
+          <i class="fas fa-chevron-right" style="color:var(--gray);"></i>
+        </div>
+      `).join("");
+    }
+
+    // Called from onclick — finds doctor by profile _id then selects
+    function selectDoctor_byId(profileId) {
+      const doctor = allDoctors.find(d => d._id === profileId);
+      if (doctor) selectDoctor(doctor);
+    }
+
+    function selectDoctor(doctor) {
+      // =============================================
+      //   KEY FIX:
+      //   We store doctor.user._id (the User ID)
+      //   NOT doctor._id (the Doctor profile ID)
+      //   because the booking API calls User.findById()
+      // =============================================
+      const doctorUserId = doctor.user?._id || doctor.user;
+      document.getElementById("selectedDoctorId").value = doctorUserId;
+
+      // Highlight selected card
+      document.querySelectorAll("[id^='doctorCard_']").forEach(card => {
+        card.style.borderColor = "var(--border)";
+        card.style.background  = "white";
+      });
+      const card = document.getElementById(`doctorCard_${doctor._id}`);
+      if (card) {
+        card.style.borderColor = "var(--primary)";
+        card.style.background  = "#f0f8ff";
+      }
+
+      // Update the selected doctor info box
+      document.getElementById("selectedDoctorBox").innerHTML = `
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:56px; height:56px; border-radius:50%;
+                      background:linear-gradient(135deg, var(--primary), var(--secondary));
+                      display:flex; align-items:center; justify-content:center;
+                      color:white; font-size:22px; font-weight:700; flex-shrink:0;">
+            ${doctor.user?.name?.charAt(0).toUpperCase() || "D"}
+          </div>
+          <div style="text-align:left;">
+            <strong style="font-size:16px; color:var(--dark);">Dr. ${doctor.user?.name}</strong><br/>
+            <span style="color:var(--primary); font-size:14px;">${doctor.specialization}</span><br/>
+            <span style="color:var(--gray); font-size:13px;">
+              ₹${doctor.fees} per visit &nbsp;·&nbsp; ${doctor.experience} years experience
+            </span>
+          </div>
+        </div>
+        ${doctor.bio ? `
+        <p style="margin-top:10px; font-size:13px; color:var(--gray);
+                   border-top:1px solid var(--border); padding-top:10px;">
+          ${doctor.bio}
+        </p>` : ""}
+      `;
+      document.getElementById("selectedDoctorBox").style.borderColor = "var(--primary)";
+      document.getElementById("selectedDoctorBox").style.borderStyle  = "solid";
+    }
+
+    // Form submission
+    document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const doctorId = document.getElementById("selectedDoctorId").value;
+      const date     = document.getElementById("appointmentDate").value;
+      const timeSlot = document.getElementById("timeSlot").value;
+      const problem  = document.getElementById("problem").value;
+      const btn      = document.getElementById("bookBtn");
+
+      if (!doctorId) {
+        showAlert("Please select a doctor first!", "error");
+        return;
+      }
+
+      btn.textContent = "Booking...";
+      btn.disabled    = true;
+
+      try {
+        await apiPost("/api/appointments/book", {
+          doctorId,  // Now correctly sends the doctor's User ID
+          date,
+          timeSlot,
+          problem
+        });
+
+        showAlert("Appointment booked successfully! Redirecting...", "success");
+
+        setTimeout(() => {
+          window.location.href = "patient-dashboard.html";
+        }, 2000);
+
+      } catch (error) {
+        showAlert(error.message || "Booking failed. Please try again.", "error");
+        btn.textContent = "Confirm Booking";
+        btn.disabled    = false;
+      }
+    });
+  </script>
+
+</body>
+</html>

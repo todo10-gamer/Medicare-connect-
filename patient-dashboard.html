@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Patient Dashboard | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- =============================================
+    DASHBOARD LAYOUT = Sidebar (left) + Main (right)
+  ============================================= -->
+  <div class="dashboard-layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i class="fas fa-heartbeat"></i> MediCare
+      </div>
+
+      <!-- Navigation links -->
+      <nav class="sidebar-menu">
+        <a href="patient-dashboard.html" class="active">
+          <i class="fas fa-home"></i> Dashboard
+        </a>
+        <a href="book-appointment.html">
+          <i class="fas fa-calendar-plus"></i> Book Appointment
+        </a>
+        <a href="my-appointments.html">
+          <i class="fas fa-calendar-check"></i> My Appointments
+        </a>
+        <a href="doctors.html">
+          <i class="fas fa-user-md"></i> Find Doctors
+        </a>
+        <a href="patient-profile.html">
+          <i class="fas fa-user"></i> My Profile
+        </a>
+        <!-- Logout button calls logout() from auth.js -->
+        <a href="#" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </nav>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="dashboard-main">
+
+      <!-- Top header bar -->
+      <div class="dashboard-header">
+        <h1>Patient Dashboard</h1>
+        <!-- Patient name will be filled by JavaScript -->
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="color:var(--gray); font-size:14px;">Welcome back,</span>
+          <strong id="patientName" style="color:var(--primary);">Loading...</strong>
+        </div>
+      </div>
+
+      <!-- ============ STAT CARDS ROW ============ -->
+      <!-- These show summary numbers at a glance -->
+      <div class="stats-row">
+
+        <div class="stat-box">
+          <div class="stat-box-icon blue">
+            <i class="fas fa-calendar-check"></i>
+          </div>
+          <div class="stat-box-info">
+            <!-- These numbers are filled by JavaScript from the API -->
+            <h3 id="totalAppointments">0</h3>
+            <p>Total Appointments</p>
+          </div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-box-icon orange">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="pendingAppointments">0</h3>
+            <p>Pending</p>
+          </div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-box-icon green">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="completedAppointments">0</h3>
+            <p>Completed</p>
+          </div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-box-icon red">
+            <i class="fas fa-times-circle"></i>
+          </div>
+          <div class="stat-box-info">
+            <h3 id="cancelledAppointments">0</h3>
+            <p>Cancelled</p>
+          </div>
+        </div>
+
+      </div>
+      <!-- End stat cards -->
+
+      <!-- ============ QUICK ACTIONS ============ -->
+      <div style="display:flex; gap:16px; margin-bottom:32px; flex-wrap:wrap;">
+        <a href="book-appointment.html" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Book New Appointment
+        </a>
+        <a href="doctors.html" class="btn btn-outline">
+          <i class="fas fa-search"></i> Find Doctors
+        </a>
+      </div>
+
+      <!-- ============ APPOINTMENTS TABLE ============ -->
+      <div class="table-card">
+        <h3>My Recent Appointments</h3>
+
+        <!-- Alert box for success/error messages -->
+        <div id="alertBox" class="alert" style="display:none;"></div>
+
+        <!-- The table structure -->
+        <table>
+          <thead>
+            <tr>
+              <th>Doctor</th>
+              <th>Date</th>
+              <th>Time Slot</th>
+              <th>Problem</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <!-- Table body is filled dynamically by JavaScript -->
+          <tbody id="appointmentsTableBody">
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px; color:var(--gray);">
+                <i class="fas fa-spinner fa-spin"></i> Loading appointments...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+      <!-- End appointments table -->
+
+    </main>
+    <!-- End main content -->
+
+  </div>
+  <!-- End dashboard layout -->
+
+  <!-- Load our helper JS files -->
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+
+  <script>
+    // =============================================
+    //   Patient Dashboard - JavaScript Logic
+    //   Runs when the page loads
+    // =============================================
+
+    // Step 1: Make sure user is logged in as a patient
+    // If not logged in → redirects to login page automatically
+    requireAuth("patient");
+
+    // Step 2: Get the logged-in user's data from localStorage
+    const user = getUser();
+
+    // Step 3: Show the patient's first name in the header
+    document.getElementById("patientName").textContent = user.name;
+
+    // Step 4: Load appointments when page loads
+    loadAppointments();
+
+    // -----------------------------------------------
+    //   loadAppointments()
+    //   Fetches appointments from the backend API
+    //   and displays them in the table
+    // -----------------------------------------------
+    async function loadAppointments() {
+      try {
+        // Call GET /api/appointments/my
+        // apiGet() automatically adds the JWT token in the header
+        const data = await apiGet("/api/appointments/my");
+        const appointments = data.appointments;
+
+        // Update the stat cards with counts
+        document.getElementById("totalAppointments").textContent = appointments.length;
+        document.getElementById("pendingAppointments").textContent =
+          appointments.filter(a => a.status === "pending").length;
+        document.getElementById("completedAppointments").textContent =
+          appointments.filter(a => a.status === "completed").length;
+        document.getElementById("cancelledAppointments").textContent =
+          appointments.filter(a => a.status === "cancelled").length;
+
+        // Build the table rows
+        const tbody = document.getElementById("appointmentsTableBody");
+
+        // If no appointments yet, show a friendly message
+        if (appointments.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px; color:var(--gray);">
+                No appointments yet.
+                <a href="book-appointment.html" style="color:var(--primary);">Book your first one!</a>
+              </td>
+            </tr>`;
+          return;
+        }
+
+        // Loop through each appointment and create a table row
+        tbody.innerHTML = appointments.map(appt => `
+          <tr>
+            <td>
+              <strong>Dr. ${appt.doctor?.name || "N/A"}</strong><br/>
+              <small style="color:var(--gray);">${appt.doctor?.email || ""}</small>
+            </td>
+            <td>${formatDate(appt.date)}</td>
+            <td>${appt.timeSlot}</td>
+            <td>${appt.problem || "—"}</td>
+            <td>
+              <!-- Badge color changes based on status -->
+              <span class="badge badge-${appt.status}">${appt.status}</span>
+            </td>
+            <td>
+              <!-- Only show Cancel button if appointment is pending or confirmed -->
+              ${appt.status === "pending" || appt.status === "confirmed"
+                ? `<button class="btn btn-danger"
+                     style="padding:6px 14px; font-size:13px;"
+                     onclick="cancelAppointment('${appt._id}')">
+                     Cancel
+                   </button>`
+                : "—"
+              }
+            </td>
+          </tr>
+        `).join("");
+
+      } catch (error) {
+        // If the API call fails, show an error message
+        document.getElementById("appointmentsTableBody").innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align:center; padding:40px; color:var(--danger);">
+              Failed to load appointments. Please refresh the page.
+            </td>
+          </tr>`;
+      }
+    }
+
+    // -----------------------------------------------
+    //   cancelAppointment(id)
+    //   Called when patient clicks the Cancel button
+    // -----------------------------------------------
+    async function cancelAppointment(appointmentId) {
+      // Ask for confirmation before cancelling
+      if (!confirm("Are you sure you want to cancel this appointment?")) return;
+
+      try {
+        // Call PUT /api/appointments/:id/cancel
+        await apiPut(`/api/appointments/${appointmentId}/cancel`, {
+          reason: "Cancelled by patient"
+        });
+
+        showAlert("Appointment cancelled successfully.", "success");
+
+        // Reload the table to show updated status
+        loadAppointments();
+
+      } catch (error) {
+        showAlert(error.message || "Failed to cancel appointment.", "error");
+      }
+    }
+  </script>
+
+</body>
+</html>

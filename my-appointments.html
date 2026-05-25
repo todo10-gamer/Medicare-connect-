@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Appointments | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i class="fas fa-heartbeat"></i> MediCare
+      </div>
+      <nav class="sidebar-menu">
+        <a href="patient-dashboard.html">
+          <i class="fas fa-home"></i> Dashboard
+        </a>
+        <a href="book-appointment.html">
+          <i class="fas fa-calendar-plus"></i> Book Appointment
+        </a>
+        <a href="my-appointments.html" class="active">
+          <i class="fas fa-calendar-check"></i> My Appointments
+        </a>
+        <a href="doctors.html">
+          <i class="fas fa-user-md"></i> Find Doctors
+        </a>
+        <a href="patient-profile.html">
+          <i class="fas fa-user"></i> My Profile
+        </a>
+        <a href="#" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </nav>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="dashboard-main">
+
+      <div class="dashboard-header">
+        <h1>My Appointments</h1>
+        <a href="book-appointment.html" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Book New
+        </a>
+      </div>
+
+      <!-- Filter tabs -->
+      <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="filterByStatus('all')"       id="tab-all">All</button>
+        <button class="btn btn-outline" onclick="filterByStatus('pending')"   id="tab-pending">Pending</button>
+        <button class="btn btn-outline" onclick="filterByStatus('confirmed')" id="tab-confirmed">Confirmed</button>
+        <button class="btn btn-outline" onclick="filterByStatus('completed')" id="tab-completed">Completed</button>
+        <button class="btn btn-outline" onclick="filterByStatus('cancelled')" id="tab-cancelled">Cancelled</button>
+      </div>
+
+      <div id="alertBox" class="alert" style="display:none;"></div>
+
+      <!-- Appointments cards grid -->
+      <div id="appointmentsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); gap:20px;">
+        <p style="color:var(--gray);">
+          <i class="fas fa-spinner fa-spin"></i> Loading appointments...
+        </p>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+
+  <script>
+    requireAuth("patient");
+
+    let allAppointments = [];
+
+    loadAppointments();
+
+    async function loadAppointments() {
+      try {
+        const data = await apiGet("/api/appointments/my");
+        allAppointments = data.appointments;
+        renderAppointments(allAppointments);
+      } catch (error) {
+        document.getElementById("appointmentsGrid").innerHTML =
+          `<p style="color:var(--danger);">Failed to load appointments.</p>`;
+      }
+    }
+
+    // Filter by status tab
+    function filterByStatus(status) {
+      // Update tab button styles
+      ["all","pending","confirmed","completed","cancelled"].forEach(s => {
+        document.getElementById(`tab-${s}`).className =
+          s === status ? "btn btn-primary" : "btn btn-outline";
+      });
+
+      const filtered = status === "all"
+        ? allAppointments
+        : allAppointments.filter(a => a.status === status);
+
+      renderAppointments(filtered);
+    }
+
+    // Build appointment cards
+    function renderAppointments(appointments) {
+      const grid = document.getElementById("appointmentsGrid");
+
+      if (appointments.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1; text-align:center; padding:60px; color:var(--gray);">
+            <i class="fas fa-calendar-times" style="font-size:48px; margin-bottom:16px; display:block;"></i>
+            <p style="font-size:18px;">No appointments found.</p>
+            <a href="book-appointment.html" class="btn btn-primary" style="margin-top:16px;">
+              Book your first appointment
+            </a>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = appointments.map(appt => `
+        <div style="background:white; border-radius:12px; padding:24px;
+                    box-shadow:var(--shadow); border:1px solid var(--border);">
+
+          <!-- Doctor info -->
+          <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+            <div style="width:50px; height:50px; border-radius:50%;
+                        background:linear-gradient(135deg,var(--primary),var(--secondary));
+                        display:flex; align-items:center; justify-content:center;
+                        color:white; font-size:20px; font-weight:700; flex-shrink:0;">
+              ${appt.doctor?.name?.charAt(0).toUpperCase() || "D"}
+            </div>
+            <div>
+              <strong style="font-size:16px;">Dr. ${appt.doctor?.name || "N/A"}</strong><br/>
+              <span style="font-size:13px; color:var(--gray);">${appt.doctor?.email || ""}</span>
+            </div>
+            <!-- Status badge top right -->
+            <span class="badge badge-${appt.status}" style="margin-left:auto;">
+              ${appt.status}
+            </span>
+          </div>
+
+          <!-- Appointment details -->
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:14px;
+                      border-top:1px solid var(--border); padding-top:14px;">
+            <div style="display:flex; gap:8px;">
+              <i class="fas fa-calendar" style="color:var(--primary); width:16px; margin-top:2px;"></i>
+              <span><strong>Date:</strong> ${formatDate(appt.date)}</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <i class="fas fa-clock" style="color:var(--primary); width:16px; margin-top:2px;"></i>
+              <span><strong>Time:</strong> ${appt.timeSlot}</span>
+            </div>
+            ${appt.problem ? `
+            <div style="display:flex; gap:8px;">
+              <i class="fas fa-notes-medical" style="color:var(--primary); width:16px; margin-top:2px;"></i>
+              <span><strong>Problem:</strong> ${appt.problem}</span>
+            </div>` : ""}
+            ${appt.prescription ? `
+            <div style="display:flex; gap:8px; background:#f0fff4; padding:10px;
+                        border-radius:8px; border-left:3px solid var(--success);">
+              <i class="fas fa-prescription-bottle" style="color:var(--success); width:16px; margin-top:2px;"></i>
+              <span><strong>Prescription:</strong> ${appt.prescription}</span>
+            </div>` : ""}
+          </div>
+
+          <!-- Cancel button (only for pending/confirmed) -->
+          ${appt.status === "pending" || appt.status === "confirmed" ? `
+          <button class="btn btn-danger"
+            style="width:100%; margin-top:16px; padding:10px;"
+            onclick="cancelAppointment('${appt._id}')">
+            <i class="fas fa-times"></i> Cancel Appointment
+          </button>` : ""}
+
+        </div>
+      `).join("");
+    }
+
+    async function cancelAppointment(id) {
+      if (!confirm("Are you sure you want to cancel this appointment?")) return;
+      try {
+        await apiPut(`/api/appointments/${id}/cancel`, { reason: "Cancelled by patient" });
+        showAlert("Appointment cancelled.", "success");
+        loadAppointments();
+      } catch (error) {
+        showAlert(error.message || "Failed to cancel.", "error");
+      }
+    }
+  </script>
+
+</body>
+</html>

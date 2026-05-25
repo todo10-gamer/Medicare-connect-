@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login | MediCare Connect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <div class="auth-page">
+    <div class="auth-card">
+
+      <!-- Logo -->
+      <div style="text-align:center; margin-bottom:24px;">
+        <i class="fas fa-heartbeat" style="font-size:40px; color:var(--primary);"></i>
+      </div>
+
+      <h2>Welcome Back</h2>
+      <p class="subtitle">Login to your MediCare Connect account</p>
+
+      <!-- Alert box (shown on error/success) -->
+      <div id="alertBox" class="alert" style="display:none;"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="you@example.com" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+          Login
+        </button>
+      </form>
+
+      <div class="auth-redirect">
+        Don't have an account? <a href="register.html">Register here</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    // Handle login form submission
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email    = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const btn      = document.getElementById("loginBtn");
+
+      btn.textContent = "Logging in...";
+      btn.disabled = true;
+
+      try {
+        // Call our API helper (defined in api.js)
+        const data = await apiPost("/api/auth/login", { email, password });
+
+        // Save the JWT token and user info to localStorage
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        showAlert("Login successful! Redirecting...", "success");
+
+        // Redirect based on role
+        setTimeout(() => {
+          if (data.user.role === "admin")        window.location.href = "admin-dashboard.html";
+          else if (data.user.role === "doctor")  window.location.href = "doctor-dashboard.html";
+          else                                   window.location.href = "patient-dashboard.html";
+        }, 1000);
+
+      } catch (error) {
+        showAlert(error.message || "Login failed. Please try again.", "error");
+        btn.textContent = "Login";
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
